@@ -55,6 +55,7 @@ public abstract class NmfBase {
 
     public void factorize(double[] observation, int iterations, boolean isUpdatingTemplate) {
         Assert.assertTrue("# of iterations is less than zero.", 0 < iterations);
+        Arrays.fill(weight, 1.0 / templates);
         for (int i1=0; i1<iterations; ++i1) {
             construction = reconstruct(construction, weight, template);
             weight = updateWeight(weight, template, construction, observation);

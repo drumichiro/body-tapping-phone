@@ -10,15 +10,36 @@ import android.test.ActivityUnitTestCase;
 import junit.framework.Assert;
 
 /**
- * <a href="http://d.android.com/tools/testing/testing_android.html">Testing Fundamentals</a>
+ * Created by drumichiro on 2016/11/06.
  */
 public class SensorReaderTest extends ActivityUnitTestCase<MainActivity> {
+
+    static final private double MARGIN = 10.0;
 
     private MainActivity activity;
     private Context context;
 
     public SensorReaderTest() {
         super(MainActivity.class);
+    }
+
+    private int accelerometerSamplingCount;
+    private int gravitySamplingCount;
+    private int gyroscopeSamplingCount;
+    private final ReadingProcess listener = new ListeningProcessor();
+    private class ListeningProcessor implements ReadingProcess {
+        @Override
+        public void process(int sensorType, double[] current, double[] difference) {
+            if (Sensor.TYPE_ACCELEROMETER == sensorType) {
+                ++accelerometerSamplingCount;
+            }
+            else if (Sensor.TYPE_GRAVITY == sensorType) {
+                ++gravitySamplingCount;
+            }
+            else if (Sensor.TYPE_GYROSCOPE == sensorType) {
+                ++gyroscopeSamplingCount;
+            }
+        }
     }
 
     @Override
@@ -78,20 +99,42 @@ public class SensorReaderTest extends ActivityUnitTestCase<MainActivity> {
                     "Not equipped sensor is being used, but unsupported.");
         }
         try {
-            // Heart beat sensor is unsupported by my smart phone.
-            new SensorReader(manager, 2147483647);
-            throw new Exception();
-        }
-        catch (AssertionError e) {
-            Assert.assertEquals(e.getMessage(),
-                    "Not equipped sensor is being used, but unsupported.");
-        }
-        try {
             new SensorReader(manager, Sensor.TYPE_ALL);
             throw new Exception();
         }
         catch (AssertionError e) {
             Assert.assertEquals(e.getMessage(), "Using all sensors is denied in this class.");
         }
+    }
+
+    public void testSensorSampling() throws Exception {
+        SensorManager manager = (SensorManager)activity.getSystemService(context.SENSOR_SERVICE);
+        SensorReader[] sensors = new SensorReader[] {
+                new SensorReader(manager, Sensor.TYPE_ACCELEROMETER),
+                new SensorReader(manager, Sensor.TYPE_GRAVITY),
+                new SensorReader(manager, Sensor.TYPE_GYROSCOPE),
+        };
+        // Sampling start.
+        for (SensorReader sensor : sensors) {
+            sensor.setReadingProcess(listener);
+        }
+        long sleepingMSec = 3000;
+        Thread.sleep(sleepingMSec);
+        // Sampling stop.
+        for (SensorReader sensor : sensors) {
+            sensor.setReadingProcess(null);
+        }
+        double gravitySamplingBoost = gravitySamplingCount * 2.0;
+        Assert.assertTrue(accelerometerSamplingCount - MARGIN < gravitySamplingBoost);
+        Assert.assertTrue(accelerometerSamplingCount + MARGIN > gravitySamplingBoost);
+        Assert.assertTrue(gyroscopeSamplingCount - MARGIN < gravitySamplingBoost);
+        Assert.assertTrue(gyroscopeSamplingCount + MARGIN > gravitySamplingBoost);
+        int accelerometerSamplingPrior = accelerometerSamplingCount;
+        int gravitySamplingPrior = gravitySamplingCount;
+        int gyroscopeSamplingPrior = gyroscopeSamplingCount;
+        Thread.sleep(sleepingMSec);
+        Assert.assertEquals(accelerometerSamplingPrior, accelerometerSamplingCount);
+        Assert.assertEquals(gravitySamplingPrior, gravitySamplingCount);
+        Assert.assertEquals(gyroscopeSamplingPrior, gyroscopeSamplingCount);
     }
 }

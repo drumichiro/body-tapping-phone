@@ -22,11 +22,6 @@ public class SensorReader implements SensorEventListener {
         }
     }
 
-
-
-
-
-
     private static final SensorMode[] SensorReportingModes = {
         new SensorMode(0, "padding because sensor types start at 1)"),
         new SensorMode(3, "ACCELEROMETER"),
@@ -62,6 +57,7 @@ public class SensorReader implements SensorEventListener {
         new SensorMode(1, "HEART_BEAT"),        // Not tested.
     };
 
+    private final ReadingProcess defaultProcessor = new DefaultProcessor();
     private ReadingProcess reading;
     private SensorManager manager;
 
@@ -95,7 +91,7 @@ public class SensorReader implements SensorEventListener {
                 "Not equipped sensor is being used, but unsupported.", 0 < sensors.size());
 
         this.manager = manager;
-        this.reading = reading;
+        setReadingProcess(reading);
         this.sensorType = sensorType;
 
         typeName = SensorReportingModes[sensorType].string;
@@ -135,6 +131,10 @@ public class SensorReader implements SensorEventListener {
         return typeName;
     }
 
+    public void setReadingProcess(ReadingProcess reading) {
+        this.reading = (null != reading) ? reading : defaultProcessor;
+    }
+
     @Override
     public void onAccuracyChanged(Sensor arg0, int arg1) {
     }
@@ -142,12 +142,10 @@ public class SensorReader implements SensorEventListener {
     @Override
     public void onSensorChanged(SensorEvent event) {
         setEventValue(event);
-        if (null != reading) {
-            reading.process(
-                event.sensor.getType(),
-                currentBuffer,
-                differenceBuffer);
-        }
+        reading.process(
+            event.sensor.getType(),
+            currentBuffer,
+            differenceBuffer);
     }
 
     private void setEventValue(SensorEvent event) {
@@ -158,6 +156,13 @@ public class SensorReader implements SensorEventListener {
             previousBuffer[i1] = currentBuffer[i1];
             currentBuffer[i1] = event.values[i1];
             differenceBuffer[i1] = currentBuffer[i1] - previousBuffer[i1];
+        }
+    }
+
+    private class DefaultProcessor implements ReadingProcess {
+        @Override
+        public void process(int sensorType, double[] current, double[] difference) {
+            // Do nothing.
         }
     }
 }
